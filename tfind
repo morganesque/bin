@@ -1,0 +1,48 @@
+#!/usr/bin/php
+<?php
+if (isset($argv[1]))
+{
+    date_default_timezone_set('Europe/London');
+    
+    $arg = $argv[1];
+
+    // echo $arg."\n";
+    
+    if (is_numeric($arg))
+    {
+        $command = 'find . -mtime -'.$arg.'m';
+    } else {
+        $command = 'find . -newer '.$arg;
+    }
+    
+    echo $command."\n";    
+    exec($command, $results);
+    
+    $output = array();
+    
+    foreach($results as $r)
+    {
+        /* check for hidden files */ 
+        $bits = explode('/',$r);
+        $last = array_pop($bits);        
+
+        if (substr($last,0,1) == '.') continue;
+        if (is_dir($r)) continue;
+        
+        // get mod time for file.
+        $f = filemtime($r);
+        
+        $name = str_replace($_ENV['PWD'],'',$r);
+        
+        // format output
+        $output[$f.$r] = date('d F Y h:i',$f)."\t\t".$r."\n";
+    }
+    
+    ksort($output);
+    
+    echo join('',$output);
+
+} else {
+    die("\nYou must pass the number of days back to search.\n\n");
+}
+?>

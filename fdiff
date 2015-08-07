@@ -1,0 +1,115 @@
+#!/usr/bin/php
+<?php
+
+require_once 'phpdiff/Diff.php';
+require_once 'phpdiff/Diff/Renderer/Html/Inline.php';
+
+/*
+	The first arg should be a directory
+*/
+if (isset($argv[1]))
+{
+	if (file_exists($argv[1]))
+	{
+		$dirone = $argv[1];		
+	} else {
+		die("First file doesn't exist\n");
+	}
+}
+
+/*
+	The second arg should be a directory
+*/
+if (isset($argv[2]))
+{
+	if (file_exists($argv[2]))
+	{
+		$dirtwo = $argv[2];
+	} else {
+		die("Second file doesn't exist\n");
+	}
+}
+
+/*
+	Chunk of HTML for the top.
+*/
+include 'phpdiff/top.html';
+
+/*
+	Find all the diff files in the two dirs.
+*/
+$res = shell_exec('diff -rq '.$dirone.' '.$dirtwo);
+$res2 = explode("\n",trim($res));
+
+$output = '';
+$only = [];
+
+/*
+	For each file do a diff on it and create 
+	the HTML output to be displayed.
+*/
+foreach($res2 as $r)
+{
+	$res3 = explode(' ',$r);
+	if (strstr($r,'File'))
+	{
+		$name = explode('/',$res3[3]);
+
+		$fileone = explode("\n", file_get_contents($res3[1]));	
+		$filetwo = explode("\n", file_get_contents($res3[3]));	
+
+		$diff = new Diff($fileone, $filetwo);
+		$renderer = new Diff_Renderer_Html_Inline;
+		
+		$output .= '<div class="diffs" id="'.str_replace('.','',$name[1]).'" style="display:none">';
+		$output .= '<h2 class="heading-medium"><a href="'.str_replace('.html','',$name[1]).'">'.$name[1].'</a></h2>';
+		$output .= $diff->render($renderer);
+		$output .= '</div>';		
+
+		$changedfiles[] = $name[1];
+	} else {
+		if (strstr($r,'Only')) $only[substr($res3[2],0,-1)][] = $res3[3];
+	}
+}
+
+echo '<section class="column-third">';
+	
+	echo '<br /><h2>Changed files</h2><ul id="navs">';	
+	foreach($changedfiles as $li)
+	{
+		if ($li == 'diff.html') continue;
+		echo '<li><a href="#'.str_replace('.','',$li).'">'.$li.'</a></li>';
+	}
+	echo '</ul>';
+
+	if (isset($only[$dirone]))
+	{
+		echo '<br /><h2>New files</h2><ul>';
+		foreach($only[$dirtwo] as $li)
+		{
+			if ($li == 'diff.html') continue;
+			echo '<li><a href="/'.$dirtwo.'/'.str_replace('.html','',$li).'">'.$li.'</a></li>';
+		}
+		echo '</ul>';
+	}
+
+	if (isset($only[$dirone]))
+	{
+		echo '<br /><h2>Deleted files</h2><ul>';
+		foreach($only[$dirone] as $li)
+		{
+			if ($li == 'diff.html') continue;
+			echo '<li><a href="/'.$dirone.'/'.str_replace('.html','',$li).'">'.$li.'</a></li>';
+		}
+		echo '</ul>';
+	}
+
+echo '</section>';
+
+echo '<section class="column-two-thirds">'."\n";
+echo $output;
+echo '</section>'."\n";
+
+include 'phpdiff/bottom.html';
+
+?>

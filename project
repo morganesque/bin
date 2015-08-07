@@ -1,0 +1,2 @@
+#!/bin/bash
+cp ~/bin/project.sublime-project `pwd | awk '{split($0,array,"/")} END{print array[length(array)]}';`.sublime-project

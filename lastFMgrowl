@@ -1,0 +1,26 @@
+#!/usr/bin/php
+<?php
+
+$loop = true;
+$sleep_time = 60 * 5; // seconds
+
+while($loop)
+{    
+    $url = 'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=ghijklmno&api_key=27877214a3d879fae2a3534c1c4336b9&format=json';
+    $file = json_decode(join('',file($url)));    
+    
+    $a = $file->recenttracks->track[0]->artist->{'#text'};
+    $t = $file->recenttracks->track[0]->name;
+    $d = $file->recenttracks->track[0]->date->{'#text'};
+    
+    if ($d != $od) {
+        $message = "$a\n$t\n\n$d";    
+        exec('growlnotify "Last.fm" --iconpath "/Users/tommo/bin/lastfm.scpt" -m "'.$message.'"');        
+    }
+
+    $od = $d;
+    
+    if ($loop) sleep($sleep_time);    
+}
+
+?>

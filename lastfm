@@ -1,0 +1,38 @@
+#!/usr/bin/php
+<?php
+# just to remind you of some useful environment variables
+# see Help / Environment Variables for the full list
+# echo File: "$TM_FILEPATH"
+# echo Word: "$TM_CURRENT_WORD"
+# echo Selection: "$TM_SELECTED_TEXT"
+
+$url = 'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=ghijklmno&api_key=27877214a3d879fae2a3534c1c4336b9&format=json';
+$file = json_decode(join('',file($url)));
+
+$a = $file->recenttracks->track[0]->artist;
+
+foreach($a as $k=>$v)
+{
+    if ($k == '#text') 
+    {
+        $artist = $a->$k;
+        break;
+    }
+}
+
+$song = $file->recenttracks->track[0]->name;
+
+$a = $file->recenttracks->track[0]->album;
+
+foreach($a as $k=>$v)
+{
+    if ($k == '#text') 
+    {
+        $album = $a->$k;
+        break;
+    }
+}
+
+echo $song.' - '.$artist.' ('.$album.')';
+
+?>

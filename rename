@@ -1,0 +1,47 @@
+#!/usr/bin/php
+<?php
+include('colours.php');
+$commands = array();
+
+if (isset($argv[1]) && isset($argv[2]))
+{
+	$arg = $argv[1];
+	$rpl = $argv[2];
+	echo "change ".$blu.$arg.$end." to ".$blu.$rpl.$n.$end;
+
+	$command = 'find . -name "*'.$arg.'*"';
+	// echo $command."\n";
+	exec($command, $results);	
+
+	foreach($results as $r)
+	{
+		if (preg_match('/\.sass/',$r)) continue;
+		if (preg_match('/build\/js/',$r)) 
+		{
+			$command = "rm ".$r;
+			echo $mag.$command.$end.$n;
+			$commands[] = $command;
+			continue;
+		}
+
+		$command = "git mv ".$r." ".str_replace($arg,$argv[2],$r);
+		// $command = "mv ".$r." ".str_replace($arg,$argv[2],$r);
+		$commands[] = $command;
+		echo $blu.$command.$n.$end;
+	}
+
+	if (count($commands) == 0) echo $grn."No files found".$n.$end;
+
+	if ($argv[3] == 'go') 
+	{
+		echo $yel."Executed!".$end.$n;
+		foreach($commands as $c) exec($c);
+	} else {
+		echo $yel."Just checking...".$end.$n;
+	}
+
+} else {
+	echo $yel."USAGE\n".$cyn."Check:\trename <search> <replace>".$n.$end;
+	echo $cyn."Commit:\trename <search> <replace> go\t".$n.$end;
+}
+?>

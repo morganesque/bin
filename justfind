@@ -1,0 +1,26 @@
+#!/usr/bin/php
+<?php
+include('colours.php');
+// var_dump($_ENV);
+
+if (isset($argv[1]))
+{
+    date_default_timezone_set('Europe/London');    
+    $arg = $argv[1];
+    // echo $arg."\n";
+    // $command = 'find '.$_ENV['PWD'].' -name \'*'.$arg.'*\'';
+    $command = 'find . -name \'*'.$arg.'*\'';
+
+    if (isset($argv[2]) && $argv[2] == '-o')
+    {
+    	$command .= ' | xargs subl';    	
+
+    } 
+    	
+	cyn($command);
+	passthru($command);	
+    
+} else {
+    red("You must pass a string to find.");
+}
+?>

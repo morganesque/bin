@@ -1,0 +1,187 @@
+#!/usr/bin/php
+<?php
+/*
+    For this to work you need to create a file which lists the JavaScript 
+    files you want to include. This is because with JS files they often need
+    to be included in the right order and so simply including all files in
+    a directory wasn't going to work.
+    
+    It adds a level of control which (in this instance) pays off more than the ease of automating it.  
+*/
+
+$COLEND = "\033[0m\n";
+$RED = "\033[41m";
+$GREEN = "\033[32m";
+$YELLOW = "\033[33m";
+$ONCE = false;
+$DEST_FILE = 'all.min.js';
+
+date_default_timezone_set('Europe/London');
+
+// take away the first arg (the filename of this script).
+$this_script = array_shift($argv);
+
+// grab the second arg (the directory to check in).
+$order = array_shift($argv);
+if (!$order) die("you must pass a order file to monitor\n");
+
+if (!preg_match('/lib\//', $order)) 
+{
+    echo $RED.'I expect the js and order.txt files to live in a dir named /lib/'.$COLEND; die;
+}
+
+// check that one of the compressor libraries I know about is installed.
+$compressor = trim(shell_exec('which uglifyjs-asdas')); // DELIBERATELY BROKEN UNTIL I'M HAPPY WITH UGLIFY.JS     
+
+if (!$compressor) $compressor = trim(shell_exec('which yuicompressor.jar'));
+else $uglifyjs = true;
+
+if (!$compressor) die ("\n".$RED."You don't have a JavaScript compressor (that I know of) installed.\nYou'll need one to proceed, so try one of these maybe?".$COLEND."\nhttps://github.com/mishoo/UglifyJS\nhttps://github.com/yui/yuicompressor\n");
+else $yuicompressor = true;
+
+// grab the destination dir for the output js file.
+$dest_dir = substr($order, 0, strpos($order, 'lib/'));
+
+// deal with rest of args
+for ($i=0; $i < count($argv); $i++) { 
+
+    $a = $argv[$i];
+
+    if (strtolower($a) == 'once') $ONCE = true; // if once is set.
+    
+    if ($a == '-o') // if we're passing another output file.
+    {
+        $i++;
+        $DEST_FILE = $argv[$i];
+    }
+}
+
+// We're assuming that your order file is in the same directory as your source files.
+$order_dir = substr($order,0,strrpos($order,'/'));
+
+// number of seconds to wait between checks.
+$sleep_time = 1;
+
+// set up a variable to store the last time we checked.
+$last = 0;
+
+/*
+    This is the main loop we want it to continue for ever hence the dreaded while(true).
+    There is a sleep(); call further down which stops it crashing your computer with an infinite loop.
+*/
+$loop = true;
+while($loop)
+{
+    // work out how long it's been since the last change.
+    $last_time = time() - $last;
+    
+    // set up a variable to decide whether to take action.
+    $doit = false;
+    
+    if (!file_exists($order))
+    {
+        echo $RED.'The file: '.$order.' doesn\'t exist. Please specify one that does!'.$COLEND;
+        die;
+    }
+    
+    $t = filemtime($order);
+    $diff = time() - $t;
+    if ($diff < $last_time)
+    {
+        echo "Loading new order file: ".date('h:ia')."\n";
+        // an array for the files we're including.
+        $files = array();
+        // grab the list of included files.
+        $order_files = file($order);
+        // loop through the list and tidy it all a bit.
+        foreach($order_files as $k=>$f)
+        {
+            $trim = trim($f);
+            if (!$trim) continue;
+            /* 
+                check for commenting out before including files. 
+                supported comments are lines starting with a # (hash)
+            */
+            if (!preg_match('/^#/',$f)) $files[$k] = $order_dir.'/'.$trim;
+        }
+
+        ob_start();
+        foreach($files as $s)
+        {
+            echo '<script src="<'.'?php echo $jsPath; ?'.'>js/'.$s.'"></script>'."\n";
+        }
+        $scripts = ob_get_contents();
+        ob_end_clean();
+        file_put_contents('separates.php',$scripts);
+
+        $doit = true;
+    }
+
+    /*
+        Loop through all the files in the list checking their mod-time
+        against the last time a change occurred. If it's greater then
+        a file must have been changed. We're only looking for one file 
+        to change so once we've found one we jump out of the loop.
+    */
+    foreach($files as $k=>$f)
+    {
+        if (!file_exists($files[$k])) 
+        {
+            echo $RED."File: ".$files[$k]." doesn't exist. Ignoring...".$COLEND;
+            unset($files[$k]);
+            
+        } else {
+        
+            $t = filemtime($files[$k]);
+            $diff = time() - $t;
+
+            if ($diff < $last_time)
+            {
+                $doit = true;
+                continue;
+            }
+        
+            // clear the filemtime cache to make sure you get a new results next time.
+            clearstatcache();
+        }
+    }
+    
+    
+    
+    if ($ONCE)
+    {
+        $doit = true;
+        $loop = false;
+    }
+    
+    /*
+        If we've decided to take action we perform the actions (no really we do!).
+    */
+    if ($doit)
+    {         
+        // tell the user something's changed.
+        echo $GREEN."Something changed: ".date('h:ia').$COLEND;
+               
+        // concatinate the included files.
+        $command = 'cat '.join(' ', $files).' > '.$dest_dir.'all.temp';
+        exec($command);
+
+        // minify the concatinated files (creating a new file).
+        if ($uglifyjs) $command = $compressor.' '.$dest_dir.'all.temp -o '.$dest_dir.$DEST_FILE;
+        else if ($yuicompressor) $command = 'java -jar '.$compressor.' '.$dest_dir.'all.temp -o '.$dest_dir.$DEST_FILE.' --type js';
+        echo $command."\n";
+        exec($command);
+
+        // remove the concatinated file.
+        $command = 'rm '.$dest_dir.'all.temp';
+        exec($command);
+        
+        // remember to set the $last var to this time so all changed since now are captured next time.
+        $last = time();
+        echo $YELLOW."done!".$COLEND;
+    }
+    
+    // remember to sleep to prevent the script crashing the system.
+    if ($loop) sleep($sleep_time);    
+}
+?>

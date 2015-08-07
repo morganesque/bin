@@ -1,0 +1,2 @@
+#!/bin/bash
+printf "\e]1;`pwd | awk '{split($0,array,"/")} END{print array[length(array)]}';`\a"

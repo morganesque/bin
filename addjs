@@ -1,0 +1,27 @@
+#!/usr/bin/php
+<?php
+
+$lib = 'allJS.conf';
+$command = 'find . -name "'.$lib.'"';
+// echo $command."\n";
+
+$r = exec($command);
+if ($r !== '')
+{
+	$handle = fopen($r,'a');
+	if (isset($argv[1]))
+	{
+		$file_to_add = $argv[1];	
+		fwrite($handle, $file_to_add."\n");
+		fclose($handle);
+	} else {
+		echo "Remember to pass in the file to add."."\n";	
+	}
+} else {
+	echo "Can't find the library file called ".$lib."\n";
+}
+
+
+
+
+?>
